@@ -200,6 +200,11 @@ export interface StreamInfo {
 	reader: NodeJS.ReadableStream;
 }
 
+export interface MessageTransports {
+	reader: MessageReader;
+	writer: MessageWriter;
+}
+
 export interface ExecutableOptions {
 	cwd?: string;
 	stdio?: string | string[];
@@ -234,7 +239,12 @@ export interface NodeModule {
 	options?: ForkOptions;
 }
 
-export type ServerOptions = Executable | { run: Executable; debug: Executable; } | { run: NodeModule; debug: NodeModule } | NodeModule | (() => Thenable<ChildProcess | StreamInfo>);
+export type ServerOptions =
+	Executable |
+	{ run: Executable; debug: Executable; } |
+	{ run: NodeModule; debug: NodeModule } |
+	NodeModule |
+	(() => Thenable<ChildProcess | StreamInfo | MessageTransports>);
 
 /**
  * An action to be performed when the connection is producing errors.
@@ -1035,11 +1045,6 @@ const clientCapabilities: ClientCapabilities = {
 			dynamicRegistration: true
 		}
 	}
-}
-
-export interface MessageTransports {
-	reader: MessageReader;
-	writer: MessageWriter;
 }
 
 export abstract class BaseLanguageClient {

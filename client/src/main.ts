@@ -7,7 +7,11 @@
 import * as cp from 'child_process';
 import ChildProcess = cp.ChildProcess;
 
-import { BaseLanguageClient, LanguageClientOptions, MessageTransports } from './client';
+import {
+	BaseLanguageClient, LanguageClientOptions, MessageTransports,
+	StreamInfo, ExecutableOptions, Executable, ForkOptions,
+	TransportKind, NodeModule, ServerOptions
+} from './client';
 
 import {
 	workspace as Workspace, Disposable
@@ -41,47 +45,6 @@ export * from './protocol';
 export * from './client';
 
 declare var v8debug: any;
-
-export interface StreamInfo {
-	writer: NodeJS.WritableStream;
-	reader: NodeJS.ReadableStream;
-}
-
-export interface ExecutableOptions {
-	cwd?: string;
-	stdio?: string | string[];
-	env?: any;
-	detached?: boolean;
-}
-
-export interface Executable {
-	command: string;
-	args?: string[];
-	options?: ExecutableOptions;
-}
-
-export interface ForkOptions {
-	cwd?: string;
-	env?: any;
-	encoding?: string;
-	execArgv?: string[];
-}
-
-export enum TransportKind {
-	stdio,
-	ipc,
-	pipe
-}
-
-export interface NodeModule {
-	module: string;
-	transport?: TransportKind;
-	args?: string[];
-	runtime?: string;
-	options?: ForkOptions;
-}
-
-export type ServerOptions = Executable | { run: Executable; debug: Executable; } | { run: NodeModule; debug: NodeModule } | NodeModule | (() => Thenable<ChildProcess | StreamInfo>);
 
 export class LanguageClient extends BaseLanguageClient {
 
@@ -171,11 +134,16 @@ export class LanguageClient extends BaseLanguageClient {
 		if (is.func(server)) {
 			return server().then((result) => {
 				let info = result as StreamInfo;
-				if (info.writer && info.reader) {
+				if (info.writer && info.writer.writable && info.reader && info.reader.readable) {
 					return { reader: new StreamMessageReader(info.reader), writer: new StreamMessageWriter(info.writer) };
 				} else {
-					let cp = result as ChildProcess;
-					return { reader: new StreamMessageReader(cp.stdout), writer: new StreamMessageWriter(cp.stdin) };
+					let transports = result as MessageTransports;
+					if (transports.writer && transports.reader) {
+						return transports;
+					} else {
+						let cp = result as ChildProcess;
+						return { reader: new StreamMessageReader(cp.stdout), writer: new StreamMessageWriter(cp.stdin) };
+					}
 				}
 			});
 		}
